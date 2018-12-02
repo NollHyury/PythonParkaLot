@@ -4,14 +4,16 @@ Created on 18 de nov de 2018
 @author: hyury
 
 '''
+import os.path
 import json
-from bson.int64 import long
 import datetime
 from _datetime import date, timedelta
+from bson.int64 import long
+
 
 valorPadrao = 2
 valorTaxaCarroHora = 2.50 
-valorTacaMotoHora = 1.50
+valorTaxaMotoHora = 1.50
 codigoCarro = 2
 codigoMoto = 1
 AutomoveisEstacionados = []
@@ -36,45 +38,40 @@ def criarAutomovel():
     
     return veiculo
 
+
+
 def estacionar():
     AutomoveisEstacionados = carregarJsonDosEstacionados()
     auto = criarAutomovel()
     verificarDisponibilidade(auto['tipoDoAutomovel'])
     AutomoveisEstacionados.append(auto)
     registrarJson(AutomoveisEstacionados)
-    preencherVaga(auto['tipoDoAutomovel'])
-    
-    
-    
+    print('vagas sobrando: ', validarVagas())
     
 def verAutomoveisEstacionados():
     AutomoveisEstacionados = carregarJsonDosEstacionados()
-    return AutomoveisEstacionados
+    for veiculo in AutomoveisEstacionados:
+        print(veiculo)
     
 
-def buscarInformacoesDeVagasLivres():
-    f = open("vagasLivres", "r")
-    retorno = f.read()
-    f.close()
-    return int(retorno)
-
-def preencherVaga(quantia):
-    novosDados = buscarInformacoesDeVagasLivres() - quantia
-    f = open("vagasLivres","w")
-    f.write(str(novosDados))
-    f.close()
+def validarVagas():
+    vagasTotais = 120
     
-def reporVagas(quantia):
-    f = open("vagasLivres","w")
-    novosDados = buscarInformacoesDeVagasLivres() + quantia
-    f.write(str(novosDados))
-    f.close()
+    AutomoveisEstacionados = carregarJsonDosEstacionados()
+    for veiculo in AutomoveisEstacionados:
+        if(veiculo['tipoDoAutomovel']== codigoCarro):
+            vagasTotais = vagasTotais - 2
+        else:
+            vagasTotais = vagasTotais - 1
+    
+    return vagasTotais
+
 
 def verificarDisponibilidade(codigoDoAutomovel):
-    vagasLivres = buscarInformacoesDeVagasLivres()
-    if(vagasLivres>=2 and codigoDoAutomovel == codigoCarro):
+    vagasLivres = validarVagas()
+    if(vagasLivres>= codigoCarro and codigoDoAutomovel == codigoCarro):
         return True
-    elif(vagasLivres >=1 and codigoDoAutomovel == codigoMoto):
+    elif(vagasLivres >=codigoMoto and codigoDoAutomovel == codigoMoto):
         return True
     else:
         return False
@@ -85,10 +82,14 @@ def registrarJson(listaEstacionados):
     f.close()
     
 def carregarJsonDosEstacionados():
-    f = open("jsonEstacionados","r")
-    auto = json.loads(f.read())
-    f.close()
-    return auto
+    if(os.path.isfile('jsonEstacionados')):
+        f = open("jsonEstacionados","r")
+        auto = (f.read())
+        f.close()
+        return json.loads(auto)
+    else:
+        registrarJson([])
+        return carregarJsonDosEstacionados()
     
 def retirarAutomovelDoEstacionamento():
     buscarPlaca = str(input('digite a placa do automovel:'))
@@ -99,33 +100,50 @@ def retirarAutomovelDoEstacionamento():
             cobrarTaxaDeEstacionamento(automovel['tipoDoAutomovel'], automovel['horaDeEntrada'])
             AutomoveisEstacionados.remove(automovel)
             registrarJson(AutomoveisEstacionados)
-            reporVagas(automovel['tipoDoAutomovel'])
-            return 'Obrigado, volte Sempre!'
-    else:
-        return 'falha na busca digite uma placa valida'
+            print('Obrigado, volte Sempre!','vagas sobrando: ', validarVagas())
+            
+        else:
+            print('falha na busca digite uma placa valida')
 
 def cobrarTaxaDeEstacionamento(codigoAutomovel,horaDeEntrada):
     horaAtual = datetime.datetime.now()
     horaDeComparacao = datetime.datetime.strptime(horaDeEntrada, "%Y-%m-%d %H:%M:%S.%f")
     totalDeHoras = horaAtual - horaDeComparacao
-    print(totalDeHoras)
+    print('seu automovel ficou estacionado por:',totalDeHoras,'H')
+    print('................................................................................')
     if(totalDeHoras < timedelta(hours = 1)):
-        print('deve ser cobrado uma taxa de:',valorPadrao)
+        print('deve ser cobrado uma taxa de:',valorPadrao,'R$ pelo estacionamento.')
     else:
         horaAcumulada = 1
         valorPagar = valorPadrao
         while(totalDeHoras > timedelta(hours = horaAcumulada)):
             horaAcumulada = horaAcumulada +1
             valorPagar = valorPagar + pagamentoPorTipoDeAutomovel(codigoAutomovel)
-        print('deve ser cobrado uma taxa de:',valorPagar)
+        print('deve ser cobrado uma taxa de:',valorPagar,'R$ pelo estacionamento.')
         
 def pagamentoPorTipoDeAutomovel(codigo):
     if(codigo == codigoCarro):
         return valorTaxaCarroHora
     else:
-        return valorTaxaCarroHora    
+        return valorTaxaMotoHora 
     
-estacionar()
-print(verAutomoveisEstacionados())
+
+openSystem = True
+while(openSystem):
+    print('voce deseja estacionar ou retirar o seu veiculo?')
+    opcao = str(input('Para estacionar digite [E], para Retirar digite [R],para consultar digite [C] e para Sair do sistema digite [S]'))
+    if(opcao.upper() == 'S'):
+        openSystem = False
+        break
+    elif(opcao.upper() == 'E'):
+        estacionar()
+    elif(opcao.upper() == 'R'):
+        retirarAutomovelDoEstacionamento()
+    elif(opcao.upper()=='C'):
+        verAutomoveisEstacionados()
+    else:
+        print('voce noo digitou uma opcao valida, favor vericar.')
+    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
     
-#retirarAutomovelDoEstacionamento('7484')
+
+
